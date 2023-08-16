@@ -5,7 +5,7 @@ namespace FileEncryptor.WPF.Infrastructure.Commands.Base;
 
 internal abstract class Command : ICommand
 {
-    private bool _Executable;
+    private bool _Executable = true;
     public bool Executable
     {
         get => _Executable; 

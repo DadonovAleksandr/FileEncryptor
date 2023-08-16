@@ -3,6 +3,7 @@ using FileEncryptor.WPF.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System;
+using System.Linq;
 using System.Windows;
 
 namespace FileEncryptor.WPF
@@ -12,6 +13,9 @@ namespace FileEncryptor.WPF
     /// </summary>
     public partial class App : Application
     {
+        public static Window FocusedWindow => Current.Windows.Cast<Window>().FirstOrDefault(w => w.IsFocused);
+        public static Window ActivedWindow => Current.Windows.Cast<Window>().FirstOrDefault(w => w.IsActive);
+
         private static IHost _Host;
         public static IHost Host => _Host ??= Program.CreateHostBuilder(Environment.GetCommandLineArgs()).Build();
 
