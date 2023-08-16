@@ -14,5 +14,5 @@ internal static class Program
     }
 
     public static IHostBuilder CreateHostBuilder(string[] args) => Host.CreateDefaultBuilder(args)
-        .ConfigureServices(App.ConfigureServices)
+        .ConfigureServices(App.ConfigureServices);
 }
