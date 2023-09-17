@@ -2,6 +2,7 @@
 using Microsoft.Win32;
 using System.Collections.Generic;
 using System.Linq;
+using System.Windows;
 
 namespace FileEncryptor.WPF.Services;
 
@@ -42,4 +43,30 @@ internal class UserDialogService : IUserDialog
         selectedFiles = Enumerable.Empty<string>();
         return true;
     }
+
+    public bool SaveFile(string title, out string selectedFile, string defaultFileName = null, string filter = "Все файлы (*.*)|*.*")
+    {
+        var fileDialog = new SaveFileDialog
+        {
+            Title = title,
+            Filter = filter,
+        };
+
+        if(!string.IsNullOrWhiteSpace(defaultFileName))
+            fileDialog.FileName = defaultFileName;
+
+        if (fileDialog.ShowDialog() != true)
+        {
+            selectedFile = null;
+            return false;
+        }
+
+        selectedFile = fileDialog.FileName;
+        return true;
+    }
+
+    public void Error(string title, string message) => MessageBox.Show(message, title, MessageBoxButton.OK, MessageBoxImage.Error);
+    public void Warning(string title, string message) => MessageBox.Show(message, title, MessageBoxButton.OK, MessageBoxImage.Warning);
+    public void Information(string title, string message) => MessageBox.Show(message, title, MessageBoxButton.OK, MessageBoxImage.Information);
+
 }
