@@ -91,15 +91,16 @@ internal class MainWindowViewModel : ViewModel
         var progress = new Progress<double>(p => ProgressValue = p);
 
         _processCancellation = new CancellationTokenSource();
-        
+        var cancellation = _processCancellation.Token;
+
         ((Command)EncryptCommand).Executable = false;
         ((Command)DecryptCommand).Executable = false;
-        var encryption_task = _encryptor.EncryptAsync(file.FullName, destinationPath, Password, progress: progress, cancellation: _processCancellation.Token);
+        var encryption_task = _encryptor.EncryptAsync(file.FullName, destinationPath, Password, progress: progress, cancellation: cancellation);
         try
         {
             await encryption_task;
         }
-        catch (OperationCanceledException) { } 
+        catch (OperationCanceledException ex) when (ex.CancellationToken == cancellation){ } 
         finally
         {
             _processCancellation.Dispose();
@@ -135,15 +136,16 @@ internal class MainWindowViewModel : ViewModel
         var progress = new Progress<double>(p => ProgressValue = p);
         
         _processCancellation = new CancellationTokenSource();
+        var cancellation = _processCancellation.Token;
 
-        var descryption_task = _encryptor.DecryptAsync(file.FullName, destinationPath, Password, progress: progress, cancellation: _processCancellation.Token);
+        var descryption_task = _encryptor.DecryptAsync(file.FullName, destinationPath, Password, progress: progress, cancellation: cancellation);
         // дополнительный код, выполняемый параллельно процессу дешифровки
         var success = false;
         try
         {
             success = await descryption_task;
         }
-        catch(OperationCanceledException) { }
+        catch(OperationCanceledException ex) when (ex.CancellationToken == cancellation) { }
         finally
         {
             _processCancellation.Dispose();

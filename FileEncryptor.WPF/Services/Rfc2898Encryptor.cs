@@ -127,7 +127,7 @@ internal class Rfc2898Encryptor : IEncryptor
             destination.FlushFinalBlock();
             progress?.Report(1);
         }
-        catch(OperationCanceledException)
+        catch(OperationCanceledException ex) when (ex.CancellationToken == cancellation)
         {
             File.Delete(destonationPath);
             progress?.Report(0);
@@ -189,7 +189,7 @@ internal class Rfc2898Encryptor : IEncryptor
             }
             
         }
-        catch(OperationCanceledException)
+        catch(OperationCanceledException ex) when(ex.CancellationToken == cancellation)
         {
             File.Delete(destonationPath);
             progress?.Report(0);
