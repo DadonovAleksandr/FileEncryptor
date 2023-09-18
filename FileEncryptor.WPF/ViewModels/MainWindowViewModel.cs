@@ -78,9 +78,15 @@ internal class MainWindowViewModel : ViewModel
 
         var timer = Stopwatch.StartNew();
         ((Command)EncryptCommand).Executable = false;
+        ((Command)DecryptCommand).Executable = false;
         var encryption_task = _encryptor.EncryptAsync(file.FullName, destinationPath, Password);
-        await encryption_task;
+        try
+        {
+            await encryption_task;
+        }
+        catch (OperationCanceledException) { }   
         ((Command)EncryptCommand).Executable = true;
+        ((Command)DecryptCommand).Executable = true;
         timer.Stop();
         _userDialog.Information("Шифрование", $"Шифрование файла успешно завершено за {timer.Elapsed.TotalSeconds:0.##} c");
     }
@@ -104,10 +110,22 @@ internal class MainWindowViewModel : ViewModel
 
         var timer = Stopwatch.StartNew();
         ((Command)EncryptCommand).Executable = false;
-        var descryption_task =_encryptor.DecryptAsync(file.FullName, destinationPath, Password);
+        ((Command)DecryptCommand).Executable = false;
+
+        var descryption_task = _encryptor.DecryptAsync(file.FullName, destinationPath, Password);
         // дополнительный код, выполняемый параллельно процессу дешифровки
-        var success = await descryption_task;
+        var success = false;
+        try
+        {
+            success = await descryption_task;
+        }
+        catch(OperationCanceledException)
+        {
+
+        }
+
         ((Command)EncryptCommand).Executable = true;
+        ((Command)DecryptCommand).Executable = true;
         timer.Stop();
         if (success)
             _userDialog.Information("Шифрование", $"Дешифровка файла выпонена успешно за {timer.Elapsed.TotalSeconds:0.##} с");
