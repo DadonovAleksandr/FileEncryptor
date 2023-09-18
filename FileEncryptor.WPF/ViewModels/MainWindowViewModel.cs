@@ -5,6 +5,7 @@ using FileEncryptor.WPF.ViewModels.Base;
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Threading;
 using System.Windows.Input;
 
 namespace FileEncryptor.WPF.ViewModels;
@@ -14,6 +15,7 @@ internal class MainWindowViewModel : ViewModel
     private const string _EncryptedFileSuffix = ".encrypted";
     private readonly IUserDialog _userDialog;
     private readonly IEncryptor _encryptor;
+    private CancellationTokenSource _processCancellation;
 
     public MainWindowViewModel(IUserDialog userDialog, IEncryptor encryptor)
     {
@@ -49,6 +51,15 @@ internal class MainWindowViewModel : ViewModel
     }
     #endregion
 
+    #region Progress
+    private double _progressValue;
+    public double ProgressValue
+    {
+        get { return _progressValue; }
+        set { Set(ref _progressValue, value); }
+    }
+    #endregion
+
     #region Команды
     #region SelectedFileCommand
     private ICommand _SelectedFileCommand;
@@ -77,18 +88,27 @@ internal class MainWindowViewModel : ViewModel
         if (!_userDialog.SaveFile("Выбор файла для сохранения", out var destinationPath, defaultFileName)) return;
 
         var timer = Stopwatch.StartNew();
+        var progress = new Progress<double>(p => ProgressValue = p);
+
+        _processCancellation = new CancellationTokenSource();
+        
         ((Command)EncryptCommand).Executable = false;
         ((Command)DecryptCommand).Executable = false;
-        var encryption_task = _encryptor.EncryptAsync(file.FullName, destinationPath, Password);
+        var encryption_task = _encryptor.EncryptAsync(file.FullName, destinationPath, Password, progress: progress, cancellation: _processCancellation.Token);
         try
         {
             await encryption_task;
         }
-        catch (OperationCanceledException) { }   
+        catch (OperationCanceledException) { } 
+        finally
+        {
+            _processCancellation.Dispose();
+            _processCancellation = null;
+        }
         ((Command)EncryptCommand).Executable = true;
         ((Command)DecryptCommand).Executable = true;
         timer.Stop();
-        _userDialog.Information("Шифрование", $"Шифрование файла успешно завершено за {timer.Elapsed.TotalSeconds:0.##} c");
+        //_userDialog.Information("Шифрование", $"Шифрование файла успешно завершено за {timer.Elapsed.TotalSeconds:0.##} c");
     }
     #endregion
 
@@ -112,16 +132,22 @@ internal class MainWindowViewModel : ViewModel
         ((Command)EncryptCommand).Executable = false;
         ((Command)DecryptCommand).Executable = false;
 
-        var descryption_task = _encryptor.DecryptAsync(file.FullName, destinationPath, Password);
+        var progress = new Progress<double>(p => ProgressValue = p);
+        
+        _processCancellation = new CancellationTokenSource();
+
+        var descryption_task = _encryptor.DecryptAsync(file.FullName, destinationPath, Password, progress: progress, cancellation: _processCancellation.Token);
         // дополнительный код, выполняемый параллельно процессу дешифровки
         var success = false;
         try
         {
             success = await descryption_task;
         }
-        catch(OperationCanceledException)
+        catch(OperationCanceledException) { }
+        finally
         {
-
+            _processCancellation.Dispose();
+            _processCancellation = null;
         }
 
         ((Command)EncryptCommand).Executable = true;
@@ -132,6 +158,16 @@ internal class MainWindowViewModel : ViewModel
         else
             _userDialog.Warning("Шифрование", $"Ошибка при дешифровке файла: указан неверный пароль") ;
     }
+    #endregion
+
+    #region CancelCommand
+    private ICommand _CancelCommand;
+    public ICommand CancelCommand => _CancelCommand ??= new LambdaCommand(OnCancelCommandExecuted, CanCancelCommandExecute);
+
+    private bool CanCancelCommandExecute(object p) => _processCancellation != null && !_processCancellation.IsCancellationRequested;
+
+    private async void OnCancelCommandExecuted(object p) => _processCancellation.Cancel();
+
     #endregion
 
     #endregion

@@ -102,16 +102,21 @@ internal class Rfc2898Encryptor : IEncryptor
 
             var buffer = new byte[bufferLength];
             int readed;
+            var lastPercent = 0.0;
             do
             {
-                Thread.Sleep(1);
                 readed = await source.ReadAsync(buffer, 0, bufferLength, cancellation).ConfigureAwait(false);
                 // дополнительные действия по завершению асинхронной операции
                 await destination.WriteAsync(buffer, 0, readed, cancellation).ConfigureAwait(false);
 
                 var filePosition = source.Position;
-                progress?.Report((double)filePosition/fileLength);
-                
+                var percent = (double)filePosition / fileLength;
+                if(percent - lastPercent > 0.001)
+                {
+                    progress?.Report(percent);
+                    lastPercent = percent;
+                }
+
                 if (cancellation.IsCancellationRequested)
                 {
                     //очистка состояния операции
@@ -125,6 +130,7 @@ internal class Rfc2898Encryptor : IEncryptor
         catch(OperationCanceledException)
         {
             File.Delete(destonationPath);
+            progress?.Report(0);
             throw;
         }
         catch(Exception ex)
@@ -155,13 +161,19 @@ internal class Rfc2898Encryptor : IEncryptor
 
             var buffer = new byte[bufferLength];
             int readed;
+            var lastPercent = 0.0;
             do
             {
                 readed = await source.ReadAsync(buffer, 0, bufferLength, cancellation).ConfigureAwait(false);
                 await destination.WriteAsync(buffer, 0, readed, cancellation).ConfigureAwait(false);
 
                 var filePosition = source.Position;
-                progress?.Report((double)filePosition / fileLength);
+                var percent = (double)filePosition / fileLength;
+                if(percent - lastPercent > 0.001)
+                {
+                    progress?.Report(percent);
+                    lastPercent = percent;
+                }
 
                 cancellation.ThrowIfCancellationRequested();
             }
@@ -180,6 +192,7 @@ internal class Rfc2898Encryptor : IEncryptor
         catch(OperationCanceledException)
         {
             File.Delete(destonationPath);
+            progress?.Report(0);
             throw;
         }
 
