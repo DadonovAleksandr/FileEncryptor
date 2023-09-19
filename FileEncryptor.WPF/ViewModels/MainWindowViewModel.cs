@@ -93,14 +93,18 @@ internal class MainWindowViewModel : ViewModel
         _processCancellation = new CancellationTokenSource();
         var cancellation = _processCancellation.Token;
 
+        var (progressInfo, statusInfo, operationCancel, closeWindow) = _userDialog.ShowProgress("Шифрование");
+        statusInfo.Report($"Шифрование файла {file.Name}");
+        var combyneCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellation, operationCancel);
+
         ((Command)EncryptCommand).Executable = false;
         ((Command)DecryptCommand).Executable = false;
-        var encryption_task = _encryptor.EncryptAsync(file.FullName, destinationPath, Password, progress: progress, cancellation: cancellation);
+        var encryption_task = _encryptor.EncryptAsync(file.FullName, destinationPath, Password, progress: progressInfo, cancellation: combyneCancellation.Token);
         try
         {
             await encryption_task;
         }
-        catch (OperationCanceledException ex) when (ex.CancellationToken == cancellation){ } 
+        catch (OperationCanceledException ex) when (ex.CancellationToken == combyneCancellation.Token){ } 
         finally
         {
             _processCancellation.Dispose();
@@ -130,22 +134,26 @@ internal class MainWindowViewModel : ViewModel
         if (!_userDialog.SaveFile("Выбор файла для сохранения", out var destinationPath, defaultFileName)) return;
 
         var timer = Stopwatch.StartNew();
-        ((Command)EncryptCommand).Executable = false;
-        ((Command)DecryptCommand).Executable = false;
-
+        
         var progress = new Progress<double>(p => ProgressValue = p);
         
         _processCancellation = new CancellationTokenSource();
         var cancellation = _processCancellation.Token;
 
-        var descryption_task = _encryptor.DecryptAsync(file.FullName, destinationPath, Password, progress: progress, cancellation: cancellation);
+        var (progressInfo, statusInfo, operationCancel, closeWindow) = _userDialog.ShowProgress("Дешифрование");
+        statusInfo.Report($"Дешифрование файла {file.Name}");
+        var combyneCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellation, operationCancel);
+
+        ((Command)EncryptCommand).Executable = false;
+        ((Command)DecryptCommand).Executable = false;
+        var descryption_task = _encryptor.DecryptAsync(file.FullName, destinationPath, Password, progress: progressInfo, cancellation: combyneCancellation.Token);
         // дополнительный код, выполняемый параллельно процессу дешифровки
         var success = false;
         try
         {
             success = await descryption_task;
         }
-        catch(OperationCanceledException ex) when (ex.CancellationToken == cancellation) { }
+        catch(OperationCanceledException ex) when (ex.CancellationToken == combyneCancellation.Token) { }
         finally
         {
             _processCancellation.Dispose();
